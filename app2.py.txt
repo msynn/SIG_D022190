@@ -1,0 +1,44 @@
+import streamlit as st
+import folium
+from streamlit_folium import st_folium
+
+# Judul aplikasi
+st.title("Peta Interaktif Kabupaten Majene")
+
+# Sidebar untuk kontrol interaktif
+st.sidebar.header("Kontrol Peta")
+location_options = {
+    "Kabupaten Majene": [-3.5403, 118.9727],
+    "Pantai Dato": [-3.5550, 118.9750],
+    "Baurung": [-3.5344, 118.9672],
+    "Wilayah Lembang": [-3.5267, 118.9733]  # Koordinat untuk Wilayah Lembang
+}
+
+# Pilihan lokasi
+location_choice = st.sidebar.selectbox("Pilih Lokasi", list(location_options.keys()))
+default_location = location_options[location_choice]
+
+# Slider untuk mengatur zoom level
+zoom_start = st.sidebar.slider("Zoom Level", min_value=5, max_value=15, value=12)
+
+# Membuat objek peta
+m = folium.Map(location=default_location, zoom_start=zoom_start)
+
+# Tambahkan marker ke peta berdasarkan pilihan
+for loc_name, loc_coords in location_options.items():
+    folium.Marker(
+        location=loc_coords,
+        popup=loc_name,
+        icon=folium.Icon(icon="cloud" if loc_name == "Kabupaten Majene" else "info-sign"),
+    ).add_to(m)
+
+# Tampilkan peta menggunakan streamlit-folium
+st_folium(m, width=725, height=500)
+
+# Peta sederhana menggunakan st.map
+st.subheader("Peta Sederhana")
+simple_map_data = {
+    "lat": [-3.5403, -3.5550, -3.5344, -3.5267],
+    "lon": [118.9727, 118.9750, 118.9672, 118.9733]
+}
+st.map(simple_map_data)
