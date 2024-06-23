@@ -1,8 +1,7 @@
-import base64
-import os
 import streamlit as st
 import folium
 import json
+import pandas as pd
 from streamlit.components.v1 import html
 
 # Set page configuration for a better appearance
@@ -27,43 +26,54 @@ colors = [
     "#a1d99b",  # Hijau terang
 ]
 
+# Fungsi untuk memuat data CSV
+def load_data(file_path):
+    data = pd.read_csv(file_path)
+    return data
 
+# Membaca data dari file CSV
+data = load_data('data.csv')
 
-# Menampilkan judul untuk peta
-st.title("Peta Kepadatan Penduduk Banggae Timur")
-st.write("Peta dengan skala warna berdasarkan kepadatan penduduk, dari merah tua, kuning, hingga hijau muda.")
-st.write("Setiap warna mewakili tingkat kepadatan yang berbeda, dengan warna merah tua menunjukkan kepadatan tertinggi.")
+# Menampilkan judul untuk peta di sidebar
+st.sidebar.markdown("<h1 style='text-align: left; color: #008000;'>Peta Kepadatan Penduduk Banggae Timur</h1>", unsafe_allow_html=True)
+
+st.sidebar.write("Kecamatan Banggae Timur merupakan salah satu kecamatan yang terletak di Kabupaten Majene, Provinsi Sulawesi Barat, Indonesia.")
+st.sidebar.write("Setiap warna mewakili tingkat kepadatan yang berbeda, dengan warna hijau tua menunjukkan kepadatan tertinggi.")
+# Menampilkan data dalam tabel di sidebar
+st.sidebar.write("Data yang digunakan:")
+st.sidebar.dataframe(data)
+
 # Membaca data GeoJSON
 with open('map.geojson') as f:
     geojson_data = json.load(f)
 
-# Mengambil kepadatan penduduk
+# Mengambil kepadatan penduduk dari atribut KEPADATAN di GeoJSON
 densities = [feature['properties']['KEPADATAN'] for feature in geojson_data['features']]
 min_density = min(densities)
 max_density = max(densities)
 
-# Fungsi untuk membuat popup untuk setiap fitur
+# Fungsi untuk membuat popup untuk setiap fitur pada peta Folium
 def popup_function(feature):
     density = feature['properties']['KEPADATAN']
-    return folium.Popup(f"Nama Desa: {feature['properties']['DESA']} KEPADATAN: {density}", parse_html=True)
+    return folium.Popup(f"Nama Desa: {feature['properties']['DESA']}<br>KEPADATAN: {density}", parse_html=True)
 
-# Urutkan fitur berdasarkan kepadatan dari tinggi ke rendah
+# Mengurutkan fitur GeoJSON berdasarkan kepadatan dari tinggi ke rendah
 sorted_features = sorted(geojson_data['features'], key=lambda x: x['properties']['KEPADATAN'], reverse=True)
 
-# Buat daftar warna sesuai urutan fitur yang diurutkan
-feature_colors = {feature['properties']['DESA']: colors[i] for i, feature in enumerate(sorted_features)}
+# Membuat daftar warna sesuai dengan urutan fitur yang diurutkan
+feature_colors = {feature['properties']['DESA']: colors[i % len(colors)] for i, feature in enumerate(sorted_features)}
 
-# Membuat peta Folium
-m = folium.Map()
+# Membuat objek peta Folium
+m = folium.Map(location=[-3.5403, 118.9727], zoom_start=12)
 
-# Menambahkan data GeoJSON ke peta dengan warna abu-abu dan popup
+# Menambahkan data GeoJSON ke peta dengan warna sesuai urutan kepadatan dan popup
 for feature in sorted_features:
     desa_name = feature['properties']['DESA']
-    color = feature_colors[desa_name]
+    color = feature_colors.get(desa_name, '#cccccc')  # Default color jika tidak ada warna yang cocok
     
     style_function = lambda x, color=color: {
         'fillColor': color,
-        'color': 'black',
+        'color': 'grey',
         'weight': 1,
         'fillOpacity': 0.7,
     }
@@ -75,7 +85,7 @@ for feature in sorted_features:
     )
     geojson_layer.add_to(m)
 
-# Menyesuaikan peta ke batas data GeoJSON
+# Menyesuaikan peta agar memuat semua data GeoJSON
 m.fit_bounds(m.get_bounds())
 
 # Menyimpan peta ke file HTML sementara
@@ -85,6 +95,6 @@ m.save('index.html')
 with open('index.html', 'r', encoding='utf-8') as f:
     map_html = f.read()
 
+
 # Menampilkan peta di Streamlit menggunakan komponen HTML
 html(map_html, height=600)
-
